@@ -1,0 +1,176 @@
+---
+title: "Untitled"
+author: "Stefan Lechmanik"
+date: "2025-04-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+```
+
+
+
+
+```{r}
+mlb_trades <- read.csv("C:/Users/stefa/OneDrive/Documents/Networks/Project/mlb_transactions.csv")
+```
+
+```{r}
+mlb_trades_no_dups <- mlb_trades %>% 
+  distinct(trans.ID, from.team, to.team, Primary.Date)
+```
+
+```{r}
+team_counts <- mlb_trades_no_dups %>%
+  group_by(from.team, to.team) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  arrange(desc(n))  
+
+print(team_counts)
+```
+```{r}
+
+
+# Step 1: Get unique teams from from.team and to.team
+teams <- unique(c(mlb_trades_no_dups$from.team, mlb_trades_no_dups$to.team))
+
+# Step 2: Create all possible unordered team pairs
+all_pairs <- expand.grid(team1 = teams, team2 = teams) %>%
+  filter(team1 < team2) %>%
+  mutate(pair = paste(team1, team2, sep = "_"))
+
+# Step 3: Get existing trade pairs in the data (unordered)
+existing_pairs <- mlb_trades_no_dups %>%
+  mutate(pair = paste(pmin(from.team, to.team), pmax(from.team, to.team), sep = "_")) %>%
+  distinct(pair)
+
+# Step 4: Find missing trade pairs
+no_trade_pairs <- all_pairs %>%
+  filter(!pair %in% existing_pairs$pair)
+
+no_trade_pairs
+
+```
+
+
+```{r}
+trade_counts <- mlb_trades_no_dups %>%
+  group_by(from.team) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  arrange(desc(n)) 
+
+print(trade_counts)
+```
+
+```{r}
+trade_counts_to <-  mlb_trades_no_dups %>%
+  group_by(to.team) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  arrange(desc(n))  
+
+
+print(trade_counts_to)
+```
+
+
+
+```{r}
+
+
+team_roles <- mlb_trades_no_dups %>%
+  group_by(from.team) %>%
+  summarise(outgoing = n(), .groups = 'drop') %>%
+  full_join(
+    mlb_trades_no_dups %>% group_by(to.team) %>% summarise(incoming = n(), .groups = 'drop'),
+    by = c("from.team" = "to.team")
+  ) %>%
+  replace_na(list(outgoing = 0, incoming = 0)) %>%
+  rename(team = from.team) %>%
+  mutate(ratio = outgoing / (incoming + 1))  # +1 to avoid divide-by-zero
+
+
+```
+
+
+```{r}
+team_roles %>%
+  arrange(desc(ratio))  # See most "seller-heavy" teams
+
+```
+
+
+
+```{r}
+library(ggplot2)
+
+ggplot(team_roles, aes(x = reorder(team, -ratio), y = ratio)) +
+  geom_col(fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Trade Behavior: Outgoing vs Incoming", x = "Team", y = "Outgoing:Incoming Trade Ratio") +
+  theme_minimal()
+
+```
+
+
+
+
+```{r}
+library(igraph)
+
+edges <- mlb_trades_no_dups %>%
+  mutate(pair = paste(from.team, to.team, sep = "_")) %>%
+  select(from.team, to.team)
+
+g <- graph_from_data_frame(edges, directed = TRUE)
+plot(g, vertex.label.color = "black", edge.arrow.size = 0.3)
+
+degree(g, mode = "all") # Centrality measure
+
+```
+```{r}
+mlb_trades_no_dups <- mlb_trades_no_dups %>%
+  mutate(Primary.Date = as.Date(as.character(Primary.Date), format = "%Y%m%d"))
+
+```
+
+
+```{r}
+month_count <- mlb_trades_no_dups %>%
+  mutate(month = format(Primary.Date, "%B")) %>%
+  count(month) %>%
+  arrange(desc(n))
+
+print(month_count)
+```
+
+```{r}
+year_count <- mlb_trades_no_dups %>%
+  mutate(year = format(Primary.Date, "%Y")) %>%
+  count(year) %>%
+  arrange(desc(n))
+
+print(year_count)
+```
+
+```{r}
+
+
+mlb_trades_no_dups %>%
+  mutate(year = format(Primary.Date, "%Y")) %>%
+  count(year) %>%
+  ggplot(aes(x = as.numeric(year), y = n)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "darkblue") +
+  labs(title = "Number of Trades Per Year",
+       x = "Year",
+       y = "Number of Trades") +
+  theme_minimal()
+
+```
+
