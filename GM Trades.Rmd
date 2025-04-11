@@ -1,0 +1,82 @@
+---
+title: "GM info"
+author: "Stefan Lechmanik"
+date: "2025-04-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+```
+
+
+
+```{r}
+gm_data <- read.csv("C:/Users/stefa/OneDrive/Documents/Networks/Project/mlb_transactions_with_gm.csv")
+```
+
+```{r}
+gm_data$to_gm <- gsub("\\s*\\([^\\)]+\\)", "", gm_data$to_gm)
+
+gm_data$from_gm <- gsub("\\s*\\([^\\)]+\\)", "", gm_data$from_gm)
+```
+
+```{r}
+gm_data_no_dups <- gm_data %>% 
+  distinct(trans.ID,from_gm,to_gm, from.team, to.team, Primary.Date)
+```
+
+
+
+```{r}
+gm_counts <- gm_data_no_dups %>%
+  group_by(from_gm, to_gm) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  arrange(desc(n))  
+
+print(gm_counts)
+```
+
+```{r}
+gm_from_counts <- gm_data_no_dups %>%
+  group_by(from_gm) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  arrange(desc(n)) 
+
+print(gm_from_counts)
+```
+
+```{r}
+gm_counts_to <-  gm_data_no_dups %>%
+  group_by(to_gm) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  arrange(desc(n))  
+
+
+print(gm_counts_to)
+```
+
+```{r}
+library(igraph)
+
+edges <- gm_data_no_dups %>%
+  mutate(pair = paste(from_gm, to_gm, sep = "_")) %>%
+  select(from_gm, to_gm)
+
+g <- graph_from_data_frame(edges, directed = TRUE)
+
+plot(g, vertex.label.color = "black", edge.arrow.size = 0.3)
+
+degree(g, mode = "all") # Centrality measure
+```
+
+
+```{r}
+
+```
+
