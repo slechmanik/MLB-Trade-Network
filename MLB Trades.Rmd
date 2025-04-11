@@ -121,16 +121,32 @@ ggplot(team_roles, aes(x = reorder(team, -ratio), y = ratio)) +
 
 
 ```{r}
-library(igraph)
 
+#install.packages("tidygraph")
+install.packages("ggraph")
+
+library(tidygraph)
+library(ggraph)
+library(dplyr)
+
+# Build weighted edge list
 edges <- mlb_trades_no_dups %>%
-  mutate(pair = paste(from.team, to.team, sep = "_")) %>%
-  select(from.team, to.team)
+  count(from.team, to.team, name = "weight")
 
-g <- graph_from_data_frame(edges, directed = TRUE)
-plot(g, vertex.label.color = "black", edge.arrow.size = 0.3)
+# Build graph with tidygraph
+g <- tbl_graph(edges = edges, directed = TRUE)
 
-degree(g, mode = "all") # Centrality measure
+# Plot using ggraph
+ggraph(g, layout = "fr") +  # or "kk" layout
+  geom_edge_link(aes(width = weight), alpha = 0.4, color = "gray30", show.legend = TRUE) +
+  geom_node_point(aes(size = centrality_degree(mode = "all")), color = "darkorange") +
+  geom_node_text(aes(label = name), repel = TRUE, size = 4, color = "black") +
+  scale_edge_width(range = c(0.2, 2)) +
+  scale_size_continuous(range = c(3, 10)) +
+  theme_void() +
+  theme(legend.position = "bottom")
+
+
 
 ```
 ```{r}
@@ -173,4 +189,8 @@ mlb_trades_no_dups %>%
   theme_minimal()
 
 ```
+
+
+
+
 
