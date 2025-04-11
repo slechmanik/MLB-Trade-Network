@@ -17,7 +17,7 @@ library(dplyr)
 
 
 ```{r}
-gm_data <- read.csv("C:/Users/stefa/OneDrive/Documents/Networks/Project/mlb_transactions_with_gm.csv")
+gm_data <- read.csv("mlb_transactions_with_gm.csv")
 ```
 
 ```{r}
@@ -77,6 +77,77 @@ degree(g, mode = "all") # Centrality measure
 
 
 ```{r}
+gm_pairs <- gm_data_no_dups %>%
+  select(from_gm, to_gm) %>%
+  bind_rows(gm_data_no_dups %>% select(from_gm = to_gm, to_gm = from_gm))
+
+# Count trades between each GM pair
+pair_counts <- gm_pairs %>%
+  group_by(from_gm, to_gm) %>%
+  summarise(trade_count = n(), .groups = 'drop')
+
+# Total trades per GM
+total_trades <- gm_pairs %>%
+  group_by(from_gm) %>%
+  summarise(total = n(), .groups = 'drop')
+
+# Join to compute percentage
+gm_trade_pct <- pair_counts %>%
+  left_join(total_trades, by = "from_gm") %>%
+  mutate(pct = trade_count / total)
+
+# For each GM, find the GM they traded with most frequently
+gm_top_partner <- gm_trade_pct %>%
+  group_by(from_gm) %>%
+  slice_max(order_by = pct, n = 5, with_ties = FALSE) %>%
+  arrange(desc(pct))
 
 ```
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# From your data: from_gm, to_gm, from.team, to.team
+
+# Combine both directions (from_gm <-> to.team and to_gm <-> from.team)
+gm_team <- gm_data_no_dups %>%
+  select(gm = from_gm, team = to.team) %>%
+  bind_rows(gm_data_no_dups %>%
+              select(gm = to_gm, team = from.team))
+
+# Count trades per GM-to-team
+gm_team_counts <- gm_team %>%
+  group_by(gm, team) %>%
+  summarise(trade_count = n(), .groups = 'drop')
+
+# Total trades per GM
+gm_totals <- gm_team_counts %>%
+  group_by(gm) %>%
+  summarise(total_trades = sum(trade_count), .groups = 'drop')
+
+# Merge and calculate percentage
+gm_team_pct <- gm_team_counts %>%
+  left_join(gm_totals, by = "gm") %>%
+  mutate(pct = trade_count / total_trades)
+
+# Optional: filter to GM-team pairs with > 2 trades
+gm_team_pct_filtered <- gm_team_pct %>%
+  filter(trade_count > 2)
+
+# Plot
+ggplot(gm_team_pct_filtered, aes(x = team, y = gm, fill = pct)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue", name = "% of Trades") +
+  theme_minimal() +
+  labs(title = "GM-to-Team Trade Percentages",
+       x = "Team",
+       y = "GM") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text = element_text(size = 7))
+
+```
+
 

@@ -18,7 +18,7 @@ library(dplyr)
 
 
 ```{r}
-mlb_trades <- read.csv("C:/Users/stefa/OneDrive/Documents/Networks/Project/mlb_transactions.csv")
+mlb_trades <- read.csv("mlb_transactions.csv")
 ```
 
 ```{r}
