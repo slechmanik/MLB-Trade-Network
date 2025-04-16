@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyr)
 library(dplyr)
+library(lubridate)
 ```
 
 
@@ -150,4 +151,22 @@ ggplot(gm_team_pct_filtered, aes(x = team, y = gm, fill = pct)) +
 
 ```
 
+```{r}
+
+gm_data_no_dups$Primary.Date <- mdy(gm_data_no_dups$Primary.Date)
+
+gm_trades_per_year <- gm_data_no_dups %>%
+  pivot_longer(cols = c(from_gm, to_gm), names_to = "role", values_to = "gm") %>%
+  mutate(year = format(Primary.Date, "%Y")) %>%
+  group_by(gm, year) %>%
+  summarise(trades_in_year = n(), .groups = "drop") %>%
+  group_by(gm) %>%
+  summarise(
+    total_trades = sum(trades_in_year),
+    active_years = n_distinct(year),
+    avg_trades_per_year = total_trades / active_years
+  )
+
+print(gm_trades_per_year)
+```
 
