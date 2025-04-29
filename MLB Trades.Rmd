@@ -33,7 +33,59 @@ team_counts <- mlb_trades_no_dups %>%
   arrange(desc(n))  
 
 print(team_counts)
+
+solo_traders <- team_counts %>% 
+  filter(n==1)
+
 ```
+```{r}
+library(dplyr)
+
+# Sample: your dataframe is called 'df'
+solo_clean <- solo_traders %>%
+  rowwise() %>%
+  mutate(
+    team1 = min(from.team, to.team),
+    team2 = max(from.team, to.team)
+  ) %>%
+  ungroup() %>%
+  count(team1, team2) %>%
+  filter(n == 2) %>%  # Keep only matchups that appear twice
+  mutate(
+    team1_full = recode(team1,
+      "ANA" = "Los Angeles Angels", "ARI" = "Arizona Diamondbacks",
+      "ATL" = "Atlanta Braves", "BAL" = "Baltimore Orioles",
+      "CHA" = "Chicago White Sox", "CHN" = "Chicago Cubs",
+      "CIN" = "Cincinnati Reds", "CLE" = "Cleveland Guardians",
+      "COL" = "Colorado Rockies", "DET" = "Detroit Tigers",
+      "HOU" = "Houston Astros", "KCA" = "Kansas City Royals",
+      "LAN" = "Los Angeles Dodgers", "MIL" = "Milwaukee Brewers",
+      "MIN" = "Minnesota Twins", "PHI" = "Philadelphia Phillies",
+      "PIT" = "Pittsburgh Pirates", "SDN" = "San Diego Padres",
+      "SEA" = "Seattle Mariners", "SFN" = "San Francisco Giants",
+      "SLN" = "St. Louis Cardinals", "WAS" = "Washington Nationals"
+    ),
+    team2_full = recode(team2,
+      "ANA" = "Los Angeles Angels", "ARI" = "Arizona Diamondbacks",
+      "ATL" = "Atlanta Braves", "BAL" = "Baltimore Orioles",
+      "CHA" = "Chicago White Sox", "CHN" = "Chicago Cubs",
+      "CIN" = "Cincinnati Reds", "CLE" = "Cleveland Guardians",
+      "COL" = "Colorado Rockies", "DET" = "Detroit Tigers",
+      "HOU" = "Houston Astros", "KCA" = "Kansas City Royals",
+      "LAN" = "Los Angeles Dodgers", "MIL" = "Milwaukee Brewers",
+      "MIN" = "Minnesota Twins", "PHI" = "Philadelphia Phillies",
+      "PIT" = "Pittsburgh Pirates", "SDN" = "San Diego Padres",
+      "SEA" = "Seattle Mariners", "SFN" = "San Francisco Giants",
+      "SLN" = "St. Louis Cardinals", "WAS" = "Washington Nationals"
+    )
+  ) %>%
+  select(team1_full, team2_full)
+
+print(solo_clean)
+
+```
+
+
 ```{r}
 
 
@@ -120,35 +172,8 @@ ggplot(team_roles, aes(x = reorder(team, -ratio), y = ratio)) +
 
 
 
-```{r}
-
-#install.packages("tidygraph")
-install.packages("ggraph")
-
-library(tidygraph)
-library(ggraph)
-library(dplyr)
-
-# Build weighted edge list
-edges <- mlb_trades_no_dups %>%
-  count(from.team, to.team, name = "weight")
-
-# Build graph with tidygraph
-g <- tbl_graph(edges = edges, directed = TRUE)
-
-# Plot using ggraph
-ggraph(g, layout = "fr") +  # or "kk" layout
-  geom_edge_link(aes(width = weight), alpha = 0.4, color = "gray30", show.legend = TRUE) +
-  geom_node_point(aes(size = centrality_degree(mode = "all")), color = "darkorange") +
-  geom_node_text(aes(label = name), repel = TRUE, size = 4, color = "black") +
-  scale_edge_width(range = c(0.2, 2)) +
-  scale_size_continuous(range = c(3, 10)) +
-  theme_void() +
-  theme(legend.position = "bottom")
 
 
-
-```
 ```{r}
 mlb_trades_no_dups <- mlb_trades_no_dups %>%
   mutate(Primary.Date = as.Date(as.character(Primary.Date), format = "%Y%m%d"))
@@ -163,6 +188,7 @@ month_count <- mlb_trades_no_dups %>%
   arrange(desc(n))
 
 print(month_count)
+
 ```
 
 ```{r}
@@ -172,10 +198,11 @@ year_count <- mlb_trades_no_dups %>%
   arrange(desc(n))
 
 print(year_count)
+
 ```
 
 ```{r}
-
+library(ggplot2)
 
 mlb_trades_no_dups %>%
   mutate(year = format(Primary.Date, "%Y")) %>%
